@@ -364,6 +364,21 @@ button {
     cursor: not-allowed;
 }
 
+/* Кнопка XLSX */
+.xlsx-btn {
+    background-color: #1dc981;
+    color: white;
+}
+
+.xlsx-btn:hover:not(:disabled) {
+    background-color: #128e5a;
+}
+
+.xlsx-btn:disabled {
+    background-color: #757e86;
+    cursor: not-allowed;
+}
+
 /* ============ СООБЩЕНИЯ ============ */
 .success {
     color: #03a62e;

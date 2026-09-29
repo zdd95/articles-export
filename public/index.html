@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Articles Export</title>
     <link rel="stylesheet" href="styles.css">
+    <!-- SheetJS для XLSX -->
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
 </head>
 <body>
     <div class="container">
@@ -148,6 +150,7 @@
             <div class="buttons-group">
                 <button onclick="searchArticles()" class="primary-btn">Найти статьи</button>
                 <button onclick="downloadCSV()" id="downloadBtn" class="download-btn" disabled>Скачать CSV</button>
+                <button onclick="downloadXLSX()" id="downloadXlsxBtn" class="xlsx-btn" disabled>Скачать XLSX</button>
             </div>
         </div>
 

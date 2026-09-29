@@ -299,10 +299,12 @@ async function searchArticles() {
     const messageDiv = document.getElementById('message');
     const loadingDiv = document.getElementById('loading');
     const downloadBtn = document.getElementById('downloadBtn');
+    const downloadXlsxBtn = document.getElementById('downloadXlsxBtn');
 
     messageDiv.innerHTML = '';
     document.getElementById('tableContainer').innerHTML = '';
     downloadBtn.disabled = true;
+    downloadXlsxBtn.disabled = true;
     currentArticles = [];
 
     if (!selectedProject) {
@@ -368,6 +370,7 @@ async function searchArticles() {
         sortTable();
         messageDiv.innerHTML = `<div class="success">Найдено записей: ${currentArticles.length}</div>`;
         downloadBtn.disabled = false;
+        downloadXlsxBtn.disabled = false;
 
     } catch (error) {
         console.error('Search error:', error);
@@ -524,6 +527,63 @@ function downloadCSV() {
     URL.revokeObjectURL(url);
 }
 
+// ============ XLSX EXPORT ============
+function downloadXLSX() {
+    if (currentArticles.length === 0) {
+        alert('Нет данных для скачивания');
+        return;
+    }
+
+    // Готовим данные
+    const headers = ['id', 'url', 'projectKey', 'type', 'title', 'leadParagraph',
+                     'createdAt', 'modifiedAt', 'publishedAt', 'isActive', 'isCommercial'];
+
+    // Формируем массив массивов (первая строка — заголовки)
+    const rows = [headers];
+
+    currentArticles.forEach(article => {
+        const row = headers.map(h => {
+            let value = article[h];
+
+            if (value === null || value === undefined) value = '';
+
+            if (h === 'createdAt' || h === 'modifiedAt' || h === 'publishedAt') {
+                value = formatDate(value);
+            }
+
+            if (h === 'isCommercial' || h === 'isActive') {
+                value = value ? 'Да' : 'Нет';
+            }
+
+            return value;
+        });
+        rows.push(row);
+    });
+
+    // Создаём книгу и лист
+    const ws = XLSX.utils.aoa_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Articles');
+
+    // Автоширина колонок (по максимуму содержимого)
+    const colWidths = headers.map((h, i) => {
+        let maxLen = h.length;
+        rows.forEach(row => {
+            const v = String(row[i] || '');
+            if (v.length > maxLen) maxLen = v.length;
+        });
+        return { wch: Math.min(maxLen + 2, 60) }; // ограничили 60 символами
+    });
+    ws['!cols'] = colWidths;
+
+    // Имя файла
+    const dateStr = new Date().toISOString().split('T')[0];
+    const filename = `articles_${selectedProject}_${dateStr}.xlsx`;
+
+    // Сохраняем
+    XLSX.writeFile(wb, filename);
+}
+
 // ============ СБРОС ВСЕХ ФИЛЬТРОВ ============
 function resetAllFilters() {
     // Очищаем теги
@@ -555,6 +615,7 @@ function resetAllFilters() {
     document.getElementById('message').innerHTML = '';
     document.getElementById('tableContainer').innerHTML = '';
     document.getElementById('downloadBtn').disabled = true;
+    document.getElementById('downloadXlsxBtn').disabled = true;
     currentArticles = [];
 
     // Удаляем сохранённые фильтры
