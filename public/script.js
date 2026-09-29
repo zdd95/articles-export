@@ -26,7 +26,8 @@ function saveFilters() {
         contentKeywords: contentKeywords,
         dateFrom: document.getElementById('dateFrom').value,
         dateTo: document.getElementById('dateTo').value,
-        isCommercial: document.querySelector('input[name="isCommercial"]:checked')?.value || 'false'
+        isCommercial: document.querySelector('input[name="isCommercial"]:checked')?.value || 'false',
+        isActive: document.querySelector('input[name="isActive"]:checked')?.value || 'true'
     };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(filters));
 }
@@ -63,6 +64,12 @@ function applyFilters(filters) {
     // Коммерческие
     if (filters.isCommercial) {
         const radio = document.querySelector(`input[name="isCommercial"][value="${filters.isCommercial}"]`);
+        if (radio) radio.checked = true;
+    }
+
+    // Активные
+    if (filters.isActive) {
+        const radio = document.querySelector(`input[name="isActive"][value="${filters.isActive}"]`);
         if (radio) radio.checked = true;
     }
 }
@@ -310,6 +317,13 @@ async function searchArticles() {
     else if (commercialRadio && commercialRadio.value === 'false') isCommercial = false;
     // 'all' -> null (не фильтруем)
 
+    // Собираем isActive
+    const activeRadio = document.querySelector('input[name="isActive"]:checked');
+    let isActive = null;
+    if (activeRadio && activeRadio.value === 'true') isActive = true;
+    else if (activeRadio && activeRadio.value === 'false') isActive = false;
+    // 'all' -> null (не фильтруем)
+
     const body = {
         project: selectedProject,
         titleKeywords: titleKeywords,
@@ -321,6 +335,10 @@ async function searchArticles() {
 
     if (isCommercial !== null) {
         body.isCommercial = isCommercial;
+    }
+
+    if (isActive !== null) {
+        body.isActive = isActive;
     }
 
     loadingDiv.style.display = 'block';
@@ -398,6 +416,7 @@ function displayTable(data) {
                     <th onclick="sortByColumn('leadParagraph')">Lead Paragraph</th>
                     <th onclick="sortByColumn('type')">Type</th>
                     <th onclick="sortByColumn('publishedAt')">Published At</th>
+                    <th onclick="sortByColumn('isActive')">Активна</th>
                     <th onclick="sortByColumn('isCommercial')">Коммерч.</th>
                 </tr>
             </thead>
@@ -416,6 +435,11 @@ function displayTable(data) {
                 <td class="col-lead">${escapeHtml(article.leadParagraph || '')}</td>
                 <td class="col-type">${escapeHtml(article.type || '')}</td>
                 <td class="col-date">${formatDate(article.publishedAt)}</td>
+                <td class="col-badge">
+                    ${article.isActive
+                        ? '<span class="badge badge-active">Да</span>'
+                        : '<span class="badge badge-inactive">Нет</span>'}
+                </td>
                 <td class="col-badge">
                     ${article.isCommercial
                         ? '<span class="badge badge-commercial">Да</span>'
@@ -458,7 +482,7 @@ function downloadCSV() {
     }
 
     const headers = ['id', 'url', 'projectKey', 'type', 'title', 'leadParagraph',
-                    'createdAt', 'modifiedAt', 'publishedAt', 'isCommercial'];
+                    'createdAt', 'modifiedAt', 'publishedAt', 'isActive','isCommercial'];
 
     let csv = '\uFEFF';
     csv += headers.join(',') + '\n';
@@ -472,7 +496,7 @@ function downloadCSV() {
                 value = formatDate(value);
             }
 
-            if (h === 'isCommercial') {
+            if (h === 'isCommercial' || h === 'isActive') {
                 value = value ? 'true' : 'false';
             }
 
@@ -522,6 +546,10 @@ function resetAllFilters() {
     // Коммерческие — "Нет" по умолчанию
     const commercialDefault = document.querySelector('input[name="isCommercial"][value="false"]');
     if (commercialDefault) commercialDefault.checked = true;
+
+    // Активные — "Да" по умолчанию
+    const activeDefault = document.querySelector('input[name="isActive"][value="true"]');
+    if (activeDefault) activeDefault.checked = true;
 
     // Сообщения и таблица
     document.getElementById('message').innerHTML = '';
@@ -576,8 +604,13 @@ document.addEventListener('DOMContentLoaded', function () {
     document.getElementById('dateFrom').addEventListener('change', saveFilters);
     document.getElementById('dateTo').addEventListener('change', saveFilters);
 
-    // Сохраняем при смене radio
+    // Сохраняем при смене radio "Коммерческие"
     document.querySelectorAll('input[name="isCommercial"]').forEach(radio => {
+        radio.addEventListener('change', saveFilters);
+    });
+
+    // Сохраняем при смене radio "Активные"
+    document.querySelectorAll('input[name="isActive"]').forEach(radio => {
         radio.addEventListener('change', saveFilters);
     });
 });

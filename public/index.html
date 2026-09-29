@@ -16,6 +16,7 @@
 
         <!-- Фильтры -->
         <div class="filters-section">
+            <!-- Первая строка: Проект + Даты + Активные + Коммерческие -->
             <div class="filter-row">
                 <!-- Проект -->
                 <div class="filter-group">
@@ -56,6 +57,25 @@
                     </div>
                 </div>
 
+                <!-- Активные -->
+                <div class="filter-group">
+                    <label>Активные:</label>
+                    <div class="radio-group">
+                        <label class="radio-label">
+                            <input type="radio" name="isActive" value="true" checked>
+                            <span>Да</span>
+                        </label>
+                        <label class="radio-label">
+                            <input type="radio" name="isActive" value="false">
+                            <span>Нет</span>
+                        </label>
+                        <label class="radio-label">
+                            <input type="radio" name="isActive" value="all">
+                            <span>Все</span>
+                        </label>
+                    </div>
+                </div>
+
                 <!-- Коммерческие -->
                 <div class="filter-group">
                     <label>Коммерческие:</label>
@@ -76,9 +96,8 @@
                 </div>
             </div>
 
-            <!-- Ключевые слова -->
+            <!-- Вторая строка: Ключевые слова (title + lead) -->
             <div class="filter-row">
-                <!-- Ключевые слова в title -->
                 <div class="filter-group filter-group-wide">
                     <label for="titleTagInput">Ключевые слова в заголовке:</label>
                     <div class="tags-input-wrapper">
@@ -89,11 +108,10 @@
                                    placeholder="Введите слово и нажмите Enter..."
                                    onkeydown="handleTagInput(event, 'title')">
                         </div>
-                        <div class="tags-hint">Разделители: Enter или запятая. Несколько слов = OR</div>
+                        <div class="tags-hint">Enter или запятая. Несколько слов = OR</div>
                     </div>
                 </div>
 
-                <!-- Ключевые слова в leadParagraph -->
                 <div class="filter-group filter-group-wide">
                     <label for="leadTagInput">Ключевые слова в лиде:</label>
                     <div class="tags-input-wrapper">
@@ -104,24 +122,24 @@
                                    placeholder="Введите слово и нажмите Enter..."
                                    onkeydown="handleTagInput(event, 'lead')">
                         </div>
-                        <div class="tags-hint">Разделители: Enter или запятая. Несколько слов = OR</div>
+                        <div class="tags-hint">Enter или запятая. Несколько слов = OR</div>
                     </div>
                 </div>
             </div>
 
-            <!-- Ключевые слова в контенте -->
+            <!-- Третья строка: Ключевые слова в контенте -->
             <div class="filter-row">
                 <div class="filter-group filter-group-wide">
                     <label for="contentTagInput">Ключевые слова в контенте:</label>
                     <div class="tags-input-wrapper">
                         <div class="tags-container" id="contentTagsContainer" onclick="focusTagInput('contentTagInput')">
                             <input type="text"
-                                id="contentTagInput"
-                                class="tag-input"
-                                placeholder="Введите слово и нажмите Enter..."
-                                onkeydown="handleTagInput(event, 'content')">
+                                   id="contentTagInput"
+                                   class="tag-input"
+                                   placeholder="Введите слово и нажмите Enter..."
+                                   onkeydown="handleTagInput(event, 'content')">
                         </div>
-                        <div class="tags-hint">Enter или запятая. Несколько слов = OR</div>
+                        <div class="tags-hint">Enter или запятая. Несколько слов = OR. Поиск по таблице articles.content</div>
                     </div>
                 </div>
             </div>

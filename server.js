@@ -150,7 +150,8 @@ app.post('/api/articles/search', async (req, res) => {
         contentKeywords = [],
         dateFrom,
         dateTo,
-        isCommercial
+        isCommercial,
+        isActive
     } = req.body;
 
     try {
@@ -204,6 +205,12 @@ app.post('/api/articles/search', async (req, res) => {
             params.push(isCommercial);
             conditions.push(`a."isCommercial" = $${params.length}`);
         }
+        
+        // isActive
+        if (isActive === true || isActive === false) {
+            params.push(isActive);
+            conditions.push(`a."isActive" = $${params.length}`);
+        }
 
         // Даты
         if (dateFrom) {
@@ -225,6 +232,7 @@ app.post('/api/articles/search', async (req, res) => {
                 a."createdAt",
                 a."modifiedAt",
                 a."publishedAt",
+                a."isActive",
                 a."isCommercial"
             FROM articles.articles a
             LEFT JOIN articles."content" ct ON ct."articleId" = a.id
