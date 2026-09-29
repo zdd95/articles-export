@@ -5,6 +5,8 @@ let projects = [];
 let sortField = 'publishedAt';
 let sortOrder = 'desc';
 
+let currentLimit;
+
 // Ключевые слова (теги)
 let titleKeywords = [];
 let leadKeywords = [];
@@ -359,6 +361,7 @@ async function searchArticles() {
         }
 
         currentArticles = data.articles || [];
+        currentLimit = data.limit || 5000;
 
         if (currentArticles.length === 0) {
             messageDiv.innerHTML = '<div class="success">Найдено записей: 0</div>';
@@ -368,7 +371,7 @@ async function searchArticles() {
         }
 
         sortTable();
-        messageDiv.innerHTML = `<div class="success">Найдено записей: ${currentArticles.length}</div>`;
+        messageDiv.innerHTML = `<div class="success">Найдено записей: ${currentArticles.length} (Лимит запроса: ${currentLimit})</div>`;
         downloadBtn.disabled = false;
         downloadXlsxBtn.disabled = false;
 
@@ -617,6 +620,7 @@ function resetAllFilters() {
     document.getElementById('downloadBtn').disabled = true;
     document.getElementById('downloadXlsxBtn').disabled = true;
     currentArticles = [];
+    currentLimit = 5000;
 
     // Удаляем сохранённые фильтры
     localStorage.removeItem(STORAGE_KEY);
