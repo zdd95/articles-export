@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Articles Export</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Заголовок с кнопкой сброса -->
+        <div class="header-row">
+            <h1>Articles Export</h1>
+            <button onclick="resetAllFilters()" class="reset-all-btn">Сбросить все</button>
+        </div>
+
+        <!-- Фильтры -->
+        <div class="filters-section">
+            <div class="filter-row">
+                <!-- Проект -->
+                <div class="filter-group">
+                    <label for="projectFilter">Проект:</label>
+                    <div class="dropdown">
+                        <input type="text"
+                               id="projectFilter"
+                               class="dropdown-input"
+                               placeholder="Загрузка проектов..."
+                               readonly
+                               onclick="toggleProjectDropdown()">
+                        <div class="dropdown-list" id="projectList">
+                            <div class="search-container">
+                                <input type="text"
+                                       id="projectSearch"
+                                       class="search-input"
+                                       placeholder="Поиск проекта..."
+                                       oninput="filterProjects()">
+                            </div>
+                            <div class="dropdown-options" id="projectOptions"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Дата публикации (с) -->
+                <div class="filter-group">
+                    <label for="dateFrom">Дата публикации (с):</label>
+                    <div class="date-input-wrapper">
+                        <input type="date" id="dateFrom">
+                    </div>
+                </div>
+
+                <!-- Дата публикации (по) -->
+                <div class="filter-group">
+                    <label for="dateTo">Дата публикации (по):</label>
+                    <div class="date-input-wrapper">
+                        <input type="date" id="dateTo">
+                    </div>
+                </div>
+
+                <!-- Коммерческие -->
+                <div class="filter-group">
+                    <label>Коммерческие:</label>
+                    <div class="radio-group">
+                        <label class="radio-label">
+                            <input type="radio" name="isCommercial" value="false" checked>
+                            <span>Нет</span>
+                        </label>
+                        <label class="radio-label">
+                            <input type="radio" name="isCommercial" value="true">
+                            <span>Да</span>
+                        </label>
+                        <label class="radio-label">
+                            <input type="radio" name="isCommercial" value="all">
+                            <span>Все</span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Ключевые слова -->
+            <div class="filter-row">
+                <!-- Ключевые слова в title -->
+                <div class="filter-group filter-group-wide">
+                    <label for="titleTagInput">Ключевые слова в заголовке:</label>
+                    <div class="tags-input-wrapper">
+                        <div class="tags-container" id="titleTagsContainer" onclick="focusTagInput('titleTagInput')">
+                            <input type="text"
+                                   id="titleTagInput"
+                                   class="tag-input"
+                                   placeholder="Введите слово и нажмите Enter..."
+                                   onkeydown="handleTagInput(event, 'title')">
+                        </div>
+                        <div class="tags-hint">Разделители: Enter или запятая. Несколько слов = OR</div>
+                    </div>
+                </div>
+
+                <!-- Ключевые слова в leadParagraph -->
+                <div class="filter-group filter-group-wide">
+                    <label for="leadTagInput">Ключевые слова в лиде:</label>
+                    <div class="tags-input-wrapper">
+                        <div class="tags-container" id="leadTagsContainer" onclick="focusTagInput('leadTagInput')">
+                            <input type="text"
+                                   id="leadTagInput"
+                                   class="tag-input"
+                                   placeholder="Введите слово и нажмите Enter..."
+                                   onkeydown="handleTagInput(event, 'lead')">
+                        </div>
+                        <div class="tags-hint">Разделители: Enter или запятая. Несколько слов = OR</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Ключевые слова в контенте -->
+            <div class="filter-row">
+                <div class="filter-group filter-group-wide">
+                    <label for="contentTagInput">Ключевые слова в контенте:</label>
+                    <div class="tags-input-wrapper">
+                        <div class="tags-container" id="contentTagsContainer" onclick="focusTagInput('contentTagInput')">
+                            <input type="text"
+                                id="contentTagInput"
+                                class="tag-input"
+                                placeholder="Введите слово и нажмите Enter..."
+                                onkeydown="handleTagInput(event, 'content')">
+                        </div>
+                        <div class="tags-hint">Enter или запятая. Несколько слов = OR</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Кнопки -->
+            <div class="buttons-group">
+                <button onclick="searchArticles()" class="primary-btn">Найти статьи</button>
+                <button onclick="downloadCSV()" id="downloadBtn" class="download-btn" disabled>Скачать CSV</button>
+            </div>
+        </div>
+
+        <!-- Сообщения и загрузка -->
+        <div id="message"></div>
+        <div id="loading" class="loading" style="display: none;">Поиск статей...</div>
+
+        <!-- Таблица -->
+        <div id="tableContainer" style="margin-top: 20px;"></div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
