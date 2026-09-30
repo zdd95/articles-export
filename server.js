@@ -7,6 +7,9 @@ require('dotenv').config();
 const app = express();
 const port = process.env.PORT || 3001;
 
+// Лимит записей (из .env или 5000 по умолчанию)
+const MAX_RESULTS_LIMIT = parseInt(process.env.MAX_RESULTS_LIMIT) || 5000;
+
 // ============ MIDDLEWARE ============
 app.use(cors());
 app.use(express.json());
@@ -238,7 +241,7 @@ app.post('/api/articles/search', async (req, res) => {
             LEFT JOIN articles."content" ct ON ct."articleId" = a.id
             WHERE ${conditions.join(' AND ')}
             ORDER BY a."publishedAt" DESC NULLS LAST
-            LIMIT 1000
+            LIMIT ${MAX_RESULTS_LIMIT}
         `;
 
         console.log('📝 SQL:', query);
@@ -270,6 +273,7 @@ app.post('/api/articles/search', async (req, res) => {
 
         res.json({
             count: enriched.length,
+            limit: MAX_RESULTS_LIMIT,
             articles: enriched
         });
 
@@ -321,6 +325,7 @@ process.on('SIGINT', async () => {
 app.listen(port, '0.0.0.0', async () => {
     console.log(`🚀 Сервер запущен на http://0.0.0.0:${port}`);
     console.log(`📊 База данных: ${process.env.DB_HOST}:${process.env.DB_PORT}/${process.env.DB_NAME}`);
+    console.log(`📏 Лимит записей: ${MAX_RESULTS_LIMIT}`);
 
     // Прогрев кэша проектов при старте
     try {
