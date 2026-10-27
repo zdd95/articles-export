@@ -81,7 +81,10 @@ async function loadProjects() {
     try {
         const response = await fetch('/api/projects');
         if (!response.ok) throw new Error('Ошибка загрузки проектов');
+
         projects = await response.json();
+
+        const source = response.headers.get('X-Projects-Source') || 'default';
 
         const savedFilters = loadFilters();
 
@@ -100,6 +103,10 @@ async function loadProjects() {
         // Синхронизируем localStorage с актуальным состоянием
         saveFilters();
 
+        // Пока показывали хардкод/кэш — в фоне тянем актуальный список и доливаем новые
+        if (source !== 'db') {
+            loadProjectsFromDb();
+        }
     } catch (error) {
         isRestoringFilters = false;
         console.error('Error loading projects:', error);
@@ -107,23 +114,75 @@ async function loadProjects() {
     }
 }
 
-function initializeProjectDropdown(savedFilters) {
+async function loadProjectsFromDb() {
+    try {
+        const response = await fetch('/api/projects/refresh');
+        if (!response.ok) return;
+
+        const freshProjects = await response.json();
+        mergeProjects(freshProjects);
+    } catch (error) {
+        console.warn('Не удалось обновить список проектов:', error);
+    }
+}
+
+function mergeProjects(freshProjects) {
+    if (!Array.isArray(freshProjects) || freshProjects.length === 0) return;
+
+    const merged = Array.from(new Set([...projects, ...freshProjects])).sort();
+
+    // Новых проектов нет — ничего не перерисовываем
+    if (merged.length === projects.length) {
+        projects = merged;
+        return;
+    }
+
+    projects = merged;
+    renderProjectOptions();
+
+    if (selectedProject) {
+        selectProject(selectedProject);
+    }
+}
+
+function createProjectOption(project) {
+    const option = document.createElement('div');
+    option.className = 'dropdown-option';
+    option.textContent = project;
+    option.setAttribute('data-project', project);
+
+    option.addEventListener('click', function () {
+        selectProject(project);
+        closeProjectDropdown();
+    });
+
+    return option;
+}
+
+function renderProjectOptions() {
     const projectOptions = document.getElementById('projectOptions');
     projectOptions.innerHTML = '';
 
     projects.forEach(project => {
-        const option = document.createElement('div');
-        option.className = 'dropdown-option';
-        option.textContent = project;
-        option.setAttribute('data-project', project);
-
-        option.addEventListener('click', function () {
-            selectProject(project);
-            closeProjectDropdown();
-        });
-
-        projectOptions.appendChild(option);
+        projectOptions.appendChild(createProjectOption(project));
     });
+
+    // Восстанавливаем подсветку выбранного
+    if (selectedProject) {
+        document.querySelectorAll('#projectOptions .dropdown-option').forEach(opt => {
+            opt.classList.toggle('selected', opt.getAttribute('data-project') === selectedProject);
+        });
+    }
+
+    // Не сбрасываем активный поиск по проектам
+    const searchInput = document.getElementById('projectSearch');
+    if (searchInput && searchInput.value.trim()) {
+        filterProjects();
+    }
+}
+
+function initializeProjectDropdown(savedFilters) {
+    renderProjectOptions();
 
     // Выбираем: сохранённый проект (если есть в списке) или первый
     let projectToSelect = null;
