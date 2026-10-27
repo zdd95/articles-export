@@ -486,6 +486,29 @@ async function searchArticles() {
 }
 
 // ============ СОРТИРОВКА И ОТОБРАЖЕНИЕ ============
+function calculateDataPeriod(data) {
+    const dates = data
+        .map(article => article.publishedAt ? new Date(article.publishedAt) : null)
+        .filter(date => date !== null && !isNaN(date.getTime()));
+
+    if (dates.length === 0) return null;
+
+    const minDate = new Date(Math.min(...dates.map(d => d.getTime())));
+    const maxDate = new Date(Math.max(...dates.map(d => d.getTime())));
+
+    return {
+        min: formatDateShort(minDate),
+        max: formatDateShort(maxDate)
+    };
+}
+
+function formatDateShort(date) {
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = date.getFullYear();
+    return `${day}.${month}.${year}`;
+}
+
 function sortTable() {
     if (currentArticles.length === 0) return;
 
@@ -515,7 +538,12 @@ function sortTable() {
 function displayTable(data) {
     const container = document.getElementById('tableContainer');
 
-    let html = `
+    const period = calculateDataPeriod(data);
+    const periodHtml = period
+        ? `<div class="data-period"><strong>Данные за период:</strong> с ${escapeHtml(period.min)} по ${escapeHtml(period.max)}</div>`
+        : '';
+
+    let html = periodHtml + `
         <table>
             <thead>
                 <tr>
