@@ -15,6 +15,39 @@ let contentKeywords = [];
 // Флаг: идёт восстановление фильтров (не сохраняем в localStorage)
 let isRestoringFilters = false;
 
+// Флаг: пользователь вручную менял даты (только тогда их восстанавливаем)
+let datesCustomized = false;
+
+// ============ ЗНАЧЕНИЯ ПО УМОЛЧАНИЮ ============
+const DEFAULT_PROJECT = 'NGS';
+
+function formatDateInput(date) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+}
+
+// Ровно месяц назад (с подстройкой под длину месяца)
+function getDefaultDateFrom() {
+    const now = new Date();
+    const target = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const daysInTargetMonth = new Date(target.getFullYear(), target.getMonth() + 1, 0).getDate();
+
+    target.setDate(Math.min(now.getDate(), daysInTargetMonth));
+
+    return formatDateInput(target);
+}
+
+function getDefaultDateTo() {
+    return formatDateInput(new Date());
+}
+
+function applyDefaultFilters() {
+    document.getElementById('dateFrom').value = getDefaultDateFrom();
+    document.getElementById('dateTo').value = getDefaultDateTo();
+}
+
 // ============ СОХРАНЕНИЕ ФИЛЬТРОВ ============
 const STORAGE_KEY = 'articlesExportFilters';
 
@@ -28,6 +61,7 @@ function saveFilters() {
         contentKeywords: contentKeywords,
         dateFrom: document.getElementById('dateFrom').value,
         dateTo: document.getElementById('dateTo').value,
+        datesCustomized: datesCustomized,
         isCommercial: document.querySelector('input[name="isCommercial"]:checked')?.value || 'false',
         isActive: document.querySelector('input[name="isActive"]:checked')?.value || 'true'
     };
@@ -59,9 +93,11 @@ function applyFilters(filters) {
     renderTags('lead');
     renderTags('content');
 
-    // Даты
-    if (filters.dateFrom) document.getElementById('dateFrom').value = filters.dateFrom;
-    if (filters.dateTo) document.getElementById('dateTo').value = filters.dateTo;
+    // Даты — только если пользователь реально их менял
+    if (filters.datesCustomized) {
+        document.getElementById('dateFrom').value = filters.dateFrom || '';
+        document.getElementById('dateTo').value = filters.dateTo || '';
+    }
 
     // Коммерческие
     if (filters.isCommercial) {
@@ -88,10 +124,15 @@ async function loadProjects() {
 
         const savedFilters = loadFilters();
 
+        datesCustomized = Boolean(savedFilters?.datesCustomized);
+
         // Включаем режим восстановления — saveFilters не пишет в localStorage
         isRestoringFilters = true;
 
         initializeProjectDropdown(savedFilters);
+
+        // Сначала дефолты, затем сохранённые фильтры поверх (если они есть)
+        applyDefaultFilters();
 
         if (savedFilters) {
             applyFilters(savedFilters);
@@ -184,11 +225,13 @@ function renderProjectOptions() {
 function initializeProjectDropdown(savedFilters) {
     renderProjectOptions();
 
-    // Выбираем: сохранённый проект (если есть в списке) или первый
+    // Выбираем: сохранённый проект, дефолтный NGS или первый из списка
     let projectToSelect = null;
 
     if (savedFilters?.project && projects.includes(savedFilters.project)) {
         projectToSelect = savedFilters.project;
+    } else if (projects.includes(DEFAULT_PROJECT)) {
+        projectToSelect = DEFAULT_PROJECT;
     } else if (projects.length > 0) {
         projectToSelect = projects[0];
     }
@@ -656,14 +699,15 @@ function resetAllFilters() {
     renderTags('lead');
     renderTags('content');
 
-    // Проект — первый в списке
-    if (projects.length > 0) {
-        selectProject(projects[0]);
+    // Проект — NGS (или первый в списке)
+    const projectDefault = projects.includes(DEFAULT_PROJECT) ? DEFAULT_PROJECT : projects[0];
+    if (projectDefault) {
+        selectProject(projectDefault);
     }
 
-    // Даты
-    document.getElementById('dateFrom').value = '';
-    document.getElementById('dateTo').value = '';
+    // Даты — по умолчанию (месяц назад / сегодня)
+    datesCustomized = false;
+    applyDefaultFilters();
 
     // Коммерческие — "Нет" по умолчанию
     const commercialDefault = document.querySelector('input[name="isCommercial"][value="false"]');
@@ -715,6 +759,11 @@ function escapeHtml(unsafe) {
 }
 
 // ============ ИНИЦИАЛИЗАЦИЯ ============
+function handleDatesChange() {
+    datesCustomized = true;
+    saveFilters();
+}
+
 document.addEventListener('click', function (e) {
     if (!e.target.closest('.dropdown')) {
         closeAllDropdowns();
@@ -724,9 +773,9 @@ document.addEventListener('click', function (e) {
 document.addEventListener('DOMContentLoaded', function () {
     loadProjects();
 
-    // Сохраняем при изменении дат
-    document.getElementById('dateFrom').addEventListener('change', saveFilters);
-    document.getElementById('dateTo').addEventListener('change', saveFilters);
+    // Сохраняем при изменении дат (и запоминаем, что их меняли вручную)
+    document.getElementById('dateFrom').addEventListener('change', handleDatesChange);
+    document.getElementById('dateTo').addEventListener('change', handleDatesChange);
 
     // Сохраняем при смене radio "Коммерческие"
     document.querySelectorAll('input[name="isCommercial"]').forEach(radio => {
