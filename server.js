@@ -2,6 +2,7 @@ const express = require('express');
 const { Pool } = require('pg');
 const cors = require('cors');
 const path = require('path');
+const fs = require('fs');
 require('dotenv').config();
 
 const app = express();
@@ -37,23 +38,44 @@ pool.on('error', (err) => {
 });
 
 // ============ КЭШ ПРОЕКТОВ ============
-let projectsCache = {
-    data: null,
-    timestamp: 0
-};
-const PROJECTS_CACHE_TTL = 5 * 60 * 1000; // 5 минут
+// Хардкод-список из data/projects.json: отдаём сразу, пока в фоне идёт тяжёлый DISTINCT по articles
+const DEFAULT_PROJECTS_FILE = path.join(__dirname, 'data', 'projects.json');
 
-async function getProjectsCached() {
-    const now = Date.now();
+function loadDefaultProjects() {
+    try {
+        const parsed = JSON.parse(fs.readFileSync(DEFAULT_PROJECTS_FILE, 'utf8'));
 
-    // Если кэш свежий — отдаём из памяти
-    if (projectsCache.data && (now - projectsCache.timestamp) < PROJECTS_CACHE_TTL) {
-        console.log('📦 Проекты из кэша');
-        return projectsCache.data;
+        if (!Array.isArray(parsed)) {
+            throw new Error('ожидается массив строк');
+        }
+
+        const data = parsed.filter(item => typeof item === 'string' && item.trim());
+
+        console.log(`📋 Хардкод-список проектов: ${data.length} шт.`);
+        return data;
+    } catch (error) {
+        console.error(`⚠️  Не удалось прочитать ${DEFAULT_PROJECTS_FILE}:`, error.message);
+        return [];
     }
+}
 
-    // Иначе — запрос в БД
-    console.log('🔍 Загрузка проектов из БД...');
+const DEFAULT_PROJECTS = loadDefaultProjects();
+
+let projectsCache = {
+    data: DEFAULT_PROJECTS,
+    timestamp: 0,
+    source: 'default'
+};
+
+const PROJECTS_CACHE_TTL = 5 * 60 * 1000; // 5 минут
+const PROJECTS_RETRY_DELAY = 60 * 1000;   // 1 минута после неудачной загрузки
+
+let projectsRefreshPromise = null;
+let projectsLastAttempt = 0;
+
+// Тяжёлый запрос в БД — выполняется только в фоне
+async function refreshProjects() {
+    console.log('🔍 Обновление проектов из БД...');
     const start = Date.now();
 
     const result = await pool.query(`
@@ -65,10 +87,46 @@ async function getProjectsCached() {
 
     const data = result.rows.map(r => r.projectKey);
 
-    projectsCache = { data, timestamp: now };
-    console.log(`✅ Проекты загружены за ${Date.now() - start}ms (${data.length} шт.)`);
+    // Пустой ответ считаем аномалией и не затираем текущий список
+    if (data.length === 0) {
+        console.warn('⚠️  БД вернула пустой список проектов — оставляем прежний');
+        return projectsCache.data;
+    }
+
+    projectsCache = { data, timestamp: Date.now(), source: 'db' };
+    console.log(`✅ Проекты обновлены за ${Date.now() - start}ms (${data.length} шт.)`);
 
     return data;
+}
+
+// Запускает обновление без дублей: параллельные вызовы ждут один и тот же промис
+function triggerProjectsRefresh() {
+    if (projectsRefreshPromise) return projectsRefreshPromise;
+
+    // После неудачной загрузки не долбим БД на каждый запрос
+    if (projectsLastAttempt &&
+        (Date.now() - projectsLastAttempt) < PROJECTS_RETRY_DELAY) {
+        return Promise.resolve(projectsCache.data);
+    }
+
+    projectsLastAttempt = Date.now();
+    projectsRefreshPromise = refreshProjects()
+        .finally(() => { projectsRefreshPromise = null; });
+
+    return projectsRefreshPromise;
+}
+
+// Всегда отдаёт текущий список сразу, обновление — в фоне
+function getProjectsCached() {
+    const isStale = (Date.now() - projectsCache.timestamp) > PROJECTS_CACHE_TTL;
+
+    if (isStale) {
+        triggerProjectsRefresh().catch((error) => {
+            console.error('❌ Не удалось обновить проекты:', error.message);
+        });
+    }
+
+    return projectsCache.data;
 }
 
 // ============ ХЕЛПЕР: ПОЛУЧЕНИЕ URL СТАТЕЙ ============
@@ -134,13 +192,28 @@ async function fetchArticleUrls(projectKey, ids) {
 }
 
 // ============ API: СПИСОК ПРОЕКТОВ ============
-app.get('/api/projects', async (req, res) => {
+// Мгновенный ответ (хардкод или кэш), обновление из БД — в фоне
+app.get('/api/projects', (req, res) => {
+    const projects = getProjectsCached();
+
+    res.set('X-Projects-Source', projectsCache.source);
+    res.set('X-Projects-Updated-At', String(projectsCache.timestamp));
+
+    res.json(projects);
+});
+
+// Дожидается свежего списка из БД (для догрузки новых проектов на фронте)
+app.get('/api/projects/refresh', async (req, res) => {
     try {
-        const projects = await getProjectsCached();
+        const projects = await triggerProjectsRefresh();
+
+        res.set('X-Projects-Source', projectsCache.source);
+        res.set('X-Projects-Updated-At', String(projectsCache.timestamp));
+
         res.json(projects);
     } catch (error) {
-        console.error('Error fetching projects:', error);
-        res.status(500).json({ error: 'Ошибка загрузки проектов: ' + error.message });
+        console.error('Error refreshing projects:', error);
+        res.status(500).json({ error: 'Ошибка обновления проектов: ' + error.message });
     }
 });
 
@@ -322,16 +395,16 @@ process.on('SIGINT', async () => {
 });
 
 // ============ ЗАПУСК СЕРВЕРА ============
-app.listen(port, '0.0.0.0', async () => {
+app.listen(port, '0.0.0.0', () => {
     console.log(`🚀 Сервер запущен на http://0.0.0.0:${port}`);
     console.log(`📊 База данных: ${process.env.DB_HOST}:${process.env.DB_PORT}/${process.env.DB_NAME}`);
     console.log(`📏 Лимит записей: ${MAX_RESULTS_LIMIT}`);
 
-    // Прогрев кэша проектов при старте
-    try {
-        await getProjectsCached();
-    } catch (error) {
-        console.log('📋 Не удалось загрузить проекты при старте');
-        console.log('⚠️  Проверьте доступ к БД');
-    }
+    // Прогрев кэша проектов при старте (в фоне, не блокирует сервер)
+    triggerProjectsRefresh()
+        .then(() => console.log('✅ Кэш проектов прогрет'))
+        .catch((error) => {
+            console.log('📋 Не удалось загрузить проекты при старте:', error.message);
+            console.log('⚠️  Проверьте доступ к БД (будет использован хардкод-список)');
+        });
 });
