@@ -31,19 +31,19 @@ body {
 }
 
 .reset-all-btn {
-    background-color: #6c757d;
-    color: white;
-    border: none;
+    background-color: #ffffff;
+    color: rgb(0, 0, 0);
+    border: 1px solid #ddd;
     padding: 10px 20px;
-    border-radius: 6px;
+    border-radius: 12px;
     cursor: pointer;
-    font-size: 14px;
+    font-size: 16px;
     font-weight: bold;
     transition: background-color 0.2s;
 }
 
 .reset-all-btn:hover {
-    background-color: #545b62;
+    background-color: #e3e3e3;
 }
 
 /* ============ СЕКЦИЯ ФИЛЬТРОВ ============ */
@@ -333,7 +333,7 @@ body {
 button {
     padding: 12px 24px;
     border: none;
-    border-radius: 8px;
+    border-radius: 12px;
     font-size: 15px;
     font-weight: bold;
     cursor: pointer;
@@ -405,6 +405,79 @@ button {
     padding: 10px 15px;
     background: #e7f3ff;
     border-radius: 6px;
+}
+
+/* ============ ПАГИНАЦИЯ ============ */
+.pagination {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 12px;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.pagination-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.pagination-right {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.pagination label {
+    font-weight: bold;
+    color: #333;
+    font-size: 14px;
+}
+
+#pageSizeSelect {
+    padding: 8px 10px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    font-size: 14px;
+    background: white;
+    cursor: pointer;
+}
+
+#pageSizeSelect:focus {
+    outline: none;
+    border-color: #007bff;
+}
+
+.page-info {
+    min-width: 140px;
+    text-align: center;
+    font-size: 14px;
+}
+
+.total-count {
+    color: #555;
+    margin-left: 8px;
+    font-size: 14px;
+}
+
+.page-btn {
+    padding: 8px 12px;
+    border: 1px solid #ddd;
+    background-color: #fff;
+    color: #333;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: normal;
+}
+
+.page-btn:hover:not(:disabled) {
+    background-color: #f0f0f0;
+}
+
+.page-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
 }
 
 /* ============ ТАБЛИЦА ============ */
@@ -576,5 +649,10 @@ tr:hover {
     .col-lead,
     .col-type {
         max-width: 200px;
+    }
+
+    .pagination {
+        flex-direction: column;
+        align-items: flex-start;
     }
 }

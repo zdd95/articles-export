@@ -7,6 +7,11 @@ let sortOrder = 'desc';
 
 let currentLimit;
 
+// Пагинация
+let pageSize = 25;
+let currentPage = 1;
+let lastSortedArticles = [];
+
 // Ключевые слова (теги)
 let titleKeywords = [];
 let leadKeywords = [];
@@ -407,9 +412,12 @@ async function searchArticles() {
 
     messageDiv.innerHTML = '';
     document.getElementById('tableContainer').innerHTML = '';
+    document.getElementById('paginationContainer').style.display = 'none';
     downloadBtn.disabled = true;
     downloadXlsxBtn.disabled = true;
     currentArticles = [];
+    lastSortedArticles = [];
+    currentPage = 1;
 
     if (!selectedProject) {
         messageDiv.innerHTML = '<div class="error">Выберите проект</div>';
@@ -486,8 +494,8 @@ async function searchArticles() {
 }
 
 // ============ СОРТИРОВКА И ОТОБРАЖЕНИЕ ============
-function calculateDataPeriod(data) {
-    const dates = data
+function calculateDataPeriod() {
+    const dates = currentArticles
         .map(article => article.publishedAt ? new Date(article.publishedAt) : null)
         .filter(date => date !== null && !isNaN(date.getTime()));
 
@@ -532,13 +540,74 @@ function sortTable() {
         return 0;
     });
 
-    displayTable(sorted);
+    lastSortedArticles = sorted;
+    renderCurrentView();
+}
+
+function renderCurrentView() {
+    const total = lastSortedArticles.length;
+
+    if (total === 0) {
+        displayTable([]);
+        updatePaginationUI(0, 1);
+        return;
+    }
+
+    const totalPages = getTotalPages();
+
+    if (currentPage > totalPages) currentPage = totalPages;
+    if (currentPage < 1) currentPage = 1;
+
+    const startIndex = (currentPage - 1) * pageSize;
+    const endIndex = Math.min(startIndex + pageSize, total);
+    const pageSlice = lastSortedArticles.slice(startIndex, endIndex);
+
+    displayTable(pageSlice);
+    updatePaginationUI(total, totalPages);
+}
+
+function getTotalPages() {
+    return Math.max(1, Math.ceil(lastSortedArticles.length / pageSize));
+}
+
+function setPage(page) {
+    const totalPages = getTotalPages();
+    const newPage = Math.min(Math.max(1, page), totalPages);
+
+    if (newPage !== currentPage) {
+        currentPage = newPage;
+        renderCurrentView();
+    }
+}
+
+function updatePaginationUI(totalCount, totalPages) {
+    const container = document.getElementById('paginationContainer');
+    const pageInfo = document.getElementById('pageInfo');
+    const totalCountEl = document.getElementById('totalCount');
+    const firstBtn = document.getElementById('firstPageBtn');
+    const prevBtn = document.getElementById('prevPageBtn');
+    const nextBtn = document.getElementById('nextPageBtn');
+    const lastBtn = document.getElementById('lastPageBtn');
+
+    if (!container) return;
+
+    container.style.display = totalCount > 0 ? 'flex' : 'none';
+
+    if (pageInfo) pageInfo.textContent = `Страница ${currentPage} из ${totalPages}`;
+    if (totalCountEl) totalCountEl.textContent = `Всего: ${totalCount}`;
+
+    const isFirst = currentPage === 1;
+    const isLast = currentPage === totalPages;
+    if (firstBtn) firstBtn.disabled = isFirst;
+    if (prevBtn) prevBtn.disabled = isFirst;
+    if (nextBtn) nextBtn.disabled = isLast;
+    if (lastBtn) lastBtn.disabled = isLast;
 }
 
 function displayTable(data) {
     const container = document.getElementById('tableContainer');
 
-    const period = calculateDataPeriod(data);
+    const period = calculateDataPeriod();
     const periodHtml = period
         ? `<div class="data-period"><strong>Данные за период:</strong> с ${escapeHtml(period.min)} по ${escapeHtml(period.max)}</div>`
         : '';
@@ -597,6 +666,7 @@ function sortByColumn(column) {
         sortField = column;
         sortOrder = 'desc';
     }
+    currentPage = 1;
     sortTable();
 }
 
@@ -748,9 +818,12 @@ function resetAllFilters() {
     // Сообщения и таблица
     document.getElementById('message').innerHTML = '';
     document.getElementById('tableContainer').innerHTML = '';
+    document.getElementById('paginationContainer').style.display = 'none';
     document.getElementById('downloadBtn').disabled = true;
     document.getElementById('downloadXlsxBtn').disabled = true;
     currentArticles = [];
+    lastSortedArticles = [];
+    currentPage = 1;
     currentLimit = 5000;
 
     // Удаляем сохранённые фильтры
@@ -814,4 +887,23 @@ document.addEventListener('DOMContentLoaded', function () {
     document.querySelectorAll('input[name="isActive"]').forEach(radio => {
         radio.addEventListener('change', saveFilters);
     });
+
+    // Пагинация
+    const pageSizeSelect = document.getElementById('pageSizeSelect');
+    if (pageSizeSelect) {
+        pageSizeSelect.value = String(pageSize);
+        pageSizeSelect.addEventListener('change', function () {
+            const newSize = parseInt(this.value, 10);
+            if (!Number.isNaN(newSize) && newSize > 0) {
+                pageSize = newSize;
+                currentPage = 1;
+                renderCurrentView();
+            }
+        });
+    }
+
+    document.getElementById('firstPageBtn')?.addEventListener('click', () => setPage(1));
+    document.getElementById('prevPageBtn')?.addEventListener('click', () => setPage(currentPage - 1));
+    document.getElementById('nextPageBtn')?.addEventListener('click', () => setPage(currentPage + 1));
+    document.getElementById('lastPageBtn')?.addEventListener('click', () => setPage(getTotalPages()));
 });
